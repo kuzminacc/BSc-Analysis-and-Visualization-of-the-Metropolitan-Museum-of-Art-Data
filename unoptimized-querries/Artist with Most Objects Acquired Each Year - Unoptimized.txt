@@ -1,0 +1,79 @@
+Za svaku godinu u kojoj je muzej dobio objekte pronaci umetnika ciji je najveci broj objekata stigao u muzej te godine, ispisuje datum rodjenja, smrti i broj objekata. (1:18.438)
+
+
+
+db.objectsV1.aggregate([
+  { 
+    $match: {
+      "Artist": { $exists: true, $ne: [] },
+    }
+  },
+  { $unwind: "$Artist" },
+  {
+    $lookup: {
+      from: "artistsV1",
+      let: {
+        displayName: "$Artist.Artist Display Name", 
+        beginDate: "$Artist.Artist Begin Date" 
+      },
+      pipeline: [
+        {
+          $match: {
+            $expr: {
+              $and: [
+                { $eq: ["$Artist Display Name", "$$displayName"] },
+                { $eq: ["$Artist Begin Date", "$$beginDate"] }
+              ]
+            }
+          }
+        }
+      ],
+      as: "artistInfo"
+    }
+  },
+  { $unwind: "$artistInfo" }, 
+  {
+    $group: {
+      _id: {
+        AccessionYear: "$AccessionYear",
+        ArtistDisplayName: "$artistInfo.Artist Display Name",
+        ArtistBeginDate: { 
+                $cond: {
+                if: { $eq: ["$artistInfo.Artist Begin Date", ""] },
+                then: "Unknown",
+                else: "$artistInfo.Artist Begin Date"
+            } 
+        },
+        ArtistEndDate: { $cond: {
+                if: { $eq: ["$artistInfo.Artist End Date", ""] },
+                then: "Unknown",
+                else: "$artistInfo.Artist End Date"
+            } 
+        }
+      },
+      workCount: { $sum: 1 } 
+    }
+  },
+  {
+    $sort: { workCount: -1 } 
+  },
+  {
+    $group: {
+      _id: "$_id.AccessionYear", 
+      topArtist: { $first: "$$ROOT" } 
+    }
+  },
+  {
+    $project: {
+      _id: 0, 
+      AccessionYear: "$_id",
+      ArtistDisplayName: "$topArtist._id.ArtistDisplayName",
+      ArtistBeginDate: "$topArtist._id.ArtistBeginDate",
+      ArtistEndDate: "$topArtist._id.ArtistEndDate",
+      Works: "$topArtist.workCount"
+    }
+  },
+  {
+    $sort: { AccessionYear: 1 } 
+  }
+]);

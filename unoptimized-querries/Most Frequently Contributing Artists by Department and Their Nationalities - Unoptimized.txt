@@ -1,0 +1,49 @@
+Za svaki departman pronaci umetnika i njegovu nacionalnost koji ima najveci broj ucestvovanja u izradi dela koja su unutar departmana. (0:02.85)
+
+
+
+db.objects.aggregate([
+  { 
+    $unwind: "$Artist" 
+  },
+  { 
+    $group: { 
+      _id: { 
+        Department: "$Department", 
+        Nationality: { 
+          $cond: { 
+            if: { $eq: ["$Artist.Artist Nationality", ""] }, 
+            then: "Other", 
+            else: "$Artist.Artist Nationality" 
+          } 
+        },
+        ArtistName: "$Artist.Artist Display Name",
+        ArtistBeginDate: "$Artist.Artist Begin Date" 
+      }, 
+      totalOccurrences: { $sum: 1 } 
+    } 
+  },
+  { 
+    $sort: { "_id.Department": 1, totalOccurrences: -1 } 
+  },
+  { 
+    $group: { 
+      _id: "$_id.Department", 
+      mostRepresentedNationality: { $first: "$_id.Nationality" }, 
+      totalOccurrences: { $first: "$totalOccurrences" },
+      artistWithMostWorks: { $first: "$_id.ArtistName" }
+    } 
+  },
+  { 
+    $project: { 
+      department: "$_id", 
+      mostRepresentedNationality: 1, 
+      totalOccurrences: 1,
+      artistWithMostWorks: 1,
+      _id: 0 
+    } 
+  },
+  {
+      $sort: { "department": 1 }
+  }
+])

@@ -1,0 +1,96 @@
+Za departman Costume institutes vratiti top 15 umetnika sa najvise dela, njihovo ime, prezime i datum rodjenja i nacionalnost. (0:0.14)
+
+
+
+db.objects.aggregate([
+{
+$match: {
+Department: "Costume Institute"
+}
+},
+{
+$unwind: "$Artist"
+},
+{
+$group: {
+_id: {
+ArtistName: "$Artist.Artist Display Name",
+Nationality: "$Artist.Artist Nationality",
+BeginDate: "$Artist.Artist Begin Date"
+},
+totalWorks: { $sum: 1 }
+}
+},
+{
+$sort: { totalWorks: -1 }
+},
+{
+$limit: 15
+},
+{
+$group: {
+_id: null,
+topArtists: {
+$push: {
+ArtistName: "$_id.ArtistName",
+Nationality: "$_id.Nationality",
+BeginDate: "$_id.BeginDate",
+TotalWorks: "$totalWorks"
+}
+},
+}
+},
+{
+$unwind: "$topArtists"
+},
+{
+$project: {
+_id: 0,
+ArtistName: "$topArtists.ArtistName",
+Nationality: "$topArtists.Nationality",
+BeginDate: "$topArtists.BeginDate",
+TotalWorks: "$topArtists.TotalWorks",
+}
+}
+])
+
+
+
+
+
+
+db.objects.aggregate([
+  {
+    $match: {
+      Department: "Costume Institute"
+    }
+  },
+  {
+    $unwind: "$Artist"
+  },
+  {
+    $group: {
+      _id: {
+        ArtistName: "$Artist.Artist Display Name",
+        Nationality: "$Artist.Artist Nationality",
+        BeginDate: "$Artist.Artist Begin Date"
+      },
+      totalWorks: { $sum: 1 }
+    }
+  },
+  {
+    $sort: { totalWorks: -1 }
+  },
+  {
+    $limit: 15
+  },
+  {
+    $project: {
+      _id: 0,
+      ArtistName: "$_id.ArtistName",
+      Nationality: "$_id.Nationality",
+      BeginDate: "$_id.BeginDate",
+      TotalWorks: "$totalWorks"
+    }
+  }
+])

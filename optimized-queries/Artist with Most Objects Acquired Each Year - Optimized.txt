@@ -1,0 +1,57 @@
+Za svaku godinu u kojoj je muzej dobio objekte pronaci umetnika ciji je najveci broj objekata stigao u muzej te godine, ispisuje datum rodjenja, smrti i broj objekata. (0:03.163)
+
+
+
+
+db.objects.aggregate([
+  { 
+    $match: {
+      "Artist": { $exists: true, $ne: [] },
+    }
+  }, 
+  { $unwind: "$Artist" }, 
+  {
+    $group: {
+      _id: {
+        AccessionYear: "$AccessionYear",
+        ArtistDisplayName: "$Artist.Artist Display Name",
+        ArtistBeginDate: { 
+                $cond: {
+                if: { $eq: ["$Artist.Artist Begin Date", ""] },
+                then: "Unknown",
+                else: "$Artist.Artist Begin Date"
+            } 
+        },
+        ArtistEndDate: { $cond: {
+                if: { $eq: ["$Artist.Artist End Date", ""] },
+                then: "Unknown",
+                else: "$Artist.Artist End Date"
+            } 
+        }
+      },
+      workCount: { $sum: 1 } 
+    }
+  },
+  {
+    $sort: { workCount: -1 } 
+  },
+  {
+    $group: {
+      _id: "$_id.AccessionYear", 
+      topArtist: { $first: "$$ROOT" } 
+    }
+  },
+  {
+    $project: {
+      _id: 0, 
+      AccessionYear: "$_id",
+      ArtistDisplayName: "$topArtist._id.ArtistDisplayName",
+      ArtistBeginDate: "$topArtist._id.ArtistBeginDate",
+      ArtistEndDate: "$topArtist._id.ArtistEndDate",
+      Works: "$topArtist.workCount"
+    }
+  },
+  {
+    $sort: { AccessionYear: 1 } 
+  }
+]);

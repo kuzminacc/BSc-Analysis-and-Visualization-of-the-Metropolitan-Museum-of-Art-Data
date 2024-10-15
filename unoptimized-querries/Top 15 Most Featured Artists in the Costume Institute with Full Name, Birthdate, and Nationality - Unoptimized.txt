@@ -1,0 +1,64 @@
+Za departman Costume institutes vratiti top 15 umetnika sa najvise dela, njihovo ime, prezime i datum rodjenja i nacionalnost. (0:4.420)
+
+
+
+db.objectsV1.aggregate([
+  {
+    $match: {
+      Department: "Costume Institute"
+    }
+  },
+  {
+    $unwind: "$Artist" 
+  },
+  {
+    $lookup: {
+      from: "artistsV1",
+      let: {
+        displayName: "$Artist.Artist Display Name", 
+        beginDate: "$Artist.Artist Begin Date" 
+      },
+      pipeline: [
+        {
+          $match: {
+            $expr: {
+              $and: [
+                { $eq: ["$Artist Display Name", "$$displayName"] },
+                { $eq: ["$Artist Begin Date", "$$beginDate"] }
+              ]
+            }
+          }
+        }
+      ],
+      as: "artistInfo"
+    }
+  },
+  {
+    $unwind: "$artistInfo" 
+  },
+  {
+    $group: {
+      _id: {
+        ArtistName: "$artistInfo.Artist Display Name",
+        Nationality: "$artistInfo.Artist Nationality",
+        BeginDate: "$artistInfo.Artist Begin Date"
+      },
+      totalWorks: { $sum: 1 }
+    }
+  },
+  {
+    $sort: { totalWorks: -1 }
+  },
+  {
+    $limit: 15
+  },
+  {
+    $project: {
+      _id: 0,
+      ArtistName: "$_id.ArtistName",
+      Nationality: "$_id.Nationality",
+      BeginDate: "$_id.BeginDate",
+      TotalWorks: "$_id.totalWorks",
+    }
+  }
+])

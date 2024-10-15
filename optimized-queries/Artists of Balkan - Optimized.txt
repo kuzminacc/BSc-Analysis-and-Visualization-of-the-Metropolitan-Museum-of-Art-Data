@@ -1,0 +1,41 @@
+Pronaci sve umetnike cija je nacionalnost sa Balkana i ispisati njegovu nacionalnost, ime, godinu rodjenja i objekte koje su stvarali. (0:1.494)
+
+
+
+
+db.objects.aggregate([
+  { $unwind: "$Artist" }, 
+  {
+    $match: {
+      "Artist.Artist Nationality": { 
+        $in: [
+          "Moldovian",
+          "Macedonian (former Yugoslavia)",
+          "Romanian",
+          "Slovenian",
+          "Montenegrin",
+          "Serbian",
+          "Croatian",
+          "Bulgarian",
+          "Bosnian (Herzegovina)",
+          "Albanian"
+        ]
+      }
+    }
+  },
+  {
+    $project: {
+      _id: 0,
+      "Object ID": 1,
+      "Artist Nationality": "$Artist.Artist Nationality", 
+      "Artist Display Name": "$Artist.Artist Display Name", 
+      "Artist Begin Date": "$Artist.Artist Begin Date", 
+      "Department": 1, 
+      "Object Name": 1,
+      "Title": 1, 
+    }
+  },
+  {
+    $sort: { "Department": 1 } 
+  }
+]);

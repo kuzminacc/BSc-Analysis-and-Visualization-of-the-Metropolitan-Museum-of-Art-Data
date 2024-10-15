@@ -1,0 +1,132 @@
+Za svaki departman pronaci koji je najcesci materijal od kojeg su izgradjeni objekti u njemu, koji je njihov broj, njihov procenat u odnosu na ostale objekte u tom departmanu i broj umetnika koji su kreirali objekte od tog materijala unutar departmana i najcesca nacionalnost. (1:02.026)
+
+
+
+db.objectsV1.aggregate([
+  { $unwind: "$Artist" },
+  {
+    $lookup: {
+      from: "artistsV1",
+      let: {
+        displayName: "$Artist.Artist Display Name", 
+        beginDate: "$Artist.Artist Begin Date" 
+      },
+      pipeline: [
+        {
+          $match: {
+            $expr: {
+              $and: [
+                { $eq: ["$Artist Display Name", "$$displayName"] },
+                { $eq: ["$Artist Begin Date", "$$beginDate"] }
+              ]
+            }
+          }
+        }
+      ],
+      as: "artistInfo"
+    }
+  },
+  { $unwind: "$artistInfo" },
+  {
+    $group: {
+      _id: { 
+        Department: "$Department", Material: "$Medium" 
+      }, 
+      count: { 
+        $sum: 1 
+      },
+      objectIds: { 
+        $addToSet: "$Object ID" 
+      },
+      artists: { 
+        $addToSet: {
+          displayName: "$Artist.Artist Display Name", 
+          beginDate: "$Artist.Artist Begin Date"
+        } 
+      },
+      nationalityCounts: {
+        $push: "$artistInfo.Artist Nationality"
+      }
+    }
+  },
+  {
+    $project: {
+      _id: 1,
+      count: 1,
+      objectIds: 1,
+      artists: 1,
+      nationalityCounts: 1,
+      nationalityMap: {
+        $arrayToObject: {
+          $map: {
+            input: "$nationalityCounts",
+            as: "nationality",
+            in: {
+              k: "$$nationality",
+              v: { $sum: 1 }
+            }
+          }
+        }
+      }
+    }
+  },
+  {
+    $addFields: {
+      mostFrequentNationality: {
+        $reduce: {
+          input: { $objectToArray: "$nationalityMap" },
+          initialValue: { k: "", v: 0 },
+          in: {
+            $cond: [
+              { $gt: ["$$this.v", "$$value.v"] },
+              "$$this",
+              "$$value"
+            ]
+          }
+        }
+      }
+    }
+  },
+  {
+    $sort: { "_id.Department": 1, count: -1 }
+  },
+  {
+    $group: {
+      _id: "$_id.Department",
+      mostFrequentMaterial: { 
+        $first: "$_id.Material" 
+      }, 
+      mostFrequentMaterialCount: { 
+        $first: "$count" 
+      }, 
+      totalObjects: { 
+        $sum: "$count"
+      },
+      totalArtists: { 
+        $sum: { 
+          $size: "$artists" 
+        } 
+      },
+      mostFrequentNationality: {
+        $first: "$mostFrequentNationality.k"
+      }
+    }
+  },
+  {
+    $project: {
+      _id: 0,
+      Department: "$_id", 
+      mostFrequentMaterial: 1, 
+      mostFrequentMaterialCount: 1, 
+      totalObjects: 1, 
+      totalArtists: 1,
+      percentageMostFrequentMaterial: {
+        $multiply: [
+          { $divide: ["$mostFrequentMaterialCount", "$totalObjects"] }, 
+          100
+        ]
+      },
+      mostFrequentNationality: 1
+    }
+  }
+])

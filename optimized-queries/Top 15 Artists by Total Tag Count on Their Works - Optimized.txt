@@ -1,0 +1,46 @@
+Naci top 15 umetnika, njihovo ime i nacionalnost ciaj dela sa u zbiru imaju najveci broj tagova. (0:02.543)
+
+
+
+
+db.objects.aggregate([
+  { $unwind: "$Artist" },
+  { $unwind: "$Tags" },
+  {
+    $group: {
+      _id: { ArtistName: "$Artist.Artist Display Name", 
+             ArtistBeginDate: { 
+                $cond: {
+                if: { $eq: ["$Artist.Artist Begin Date", ""] },
+                then: "Unknown",
+                else: "$Artist.Artist Begin Date"
+                } 
+             }, 
+             ArtistNationality: { 
+                $cond: {
+                if: { $eq: ["$Artist.Artist Nationality", ""] },
+                then: "Unknown",
+                else: "$Artist.Artist Nationality"
+                } 
+             }
+           },
+      tags: { $addToSet: "$Tags.tag" } 
+    }
+  },
+  {
+    $project: {
+      _id: 0, 
+      ArtistName: "$_id.ArtistName", 
+      ArtistBeginDate: "$_id.ArtistBeginDate",
+      AritstNationality: "$_id.ArtistNationality",
+      tagsNumber: { $size: "$tags" },
+      tags: 1,
+    }
+  },
+  {
+    $sort: { tagsNumber: -1 }
+  },
+  {
+    $limit: 15
+  }
+])

@@ -1,0 +1,50 @@
+db.objects.aggregate([
+  { $unwind: "$Artist" },
+  {
+    $group: {
+      _id: {
+        Department: "$Department",
+        ArtistRole: "$Artist.Artist Role"
+      },
+      count: { $sum: 1 }
+    }
+  },
+  {
+    $sort: { "_id.Department": 1, count: -1 }
+  },
+  {
+    $group: {
+      _id: "$_id.Department",
+      totalRoleCount: { $sum: "$count" },
+      topArtistRole: { $first: "$_id.ArtistRole" },
+      topArtistRoleCount: { $first: "$count" }
+    }
+  },
+  {
+    $project: {
+      _id: 0,
+      Department: "$_id",
+      TotalRows: "$totalRoleCount",
+      TopArtistRole: { $first: "$topArtistRole" },
+      TopArtistRoleCount: "$topArtistRoleCount",
+      PercentageTopArtistRole: {
+        $multiply: [
+          { $divide: ["$topArtistRoleCount", "$totalRoleCount"] },
+          100
+        ]
+      }
+    }
+  },
+  {
+    $project: {
+      Department: 1,
+      TotalRows: 1,
+      TopArtistRole: 1,
+      TopArtistRoleCount: 1,
+      PercentageTopArtistRole: { $round: ["$PercentageTopArtistRole", 2] }
+    }
+  }
+])
+
+
+0:1.5

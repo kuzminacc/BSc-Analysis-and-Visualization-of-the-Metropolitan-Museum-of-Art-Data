@@ -1,0 +1,59 @@
+Za svaki departman pronaci umetnika sa najranijim datumom rodjenja i pronaci umetnika sa najkasnijim datumom rodjenja. (0:3.340)
+
+
+
+db.objects.aggregate([
+  { $unwind: "$Artist" },
+  { $match: { "Artist.Artist Begin Date": { $exists: true, $ne: ""}}},
+  { 
+    $sort: {
+      "Artist.Artist Begin Date": 1
+    }      
+  },
+  { 
+    $group: {
+      _id: { Department: "$Department" },
+      oldestContributorDate: { $min: "$Artist.Artist Begin Date" },
+      oldestContributorDisplayName: { $first: "$Artist.Artist Display Name" },
+      oldestContributor: { $first: "$Artist" },
+      youngestContributorDate: { $max: "$Artist.Artist Begin Date" },
+      youngestContributorDisplayName: { $last: "$Artist.Artist Display Name" },
+      youngestContributor: { $last: "$Artist" }
+    }
+  },
+  {
+    $addFields: {
+      oldestContributorNationality: {
+        $cond: {
+          if: { $or: [{ $eq: ["$oldestContributor.Artist Nationality", null] }, { $eq: ["$oldestContributor.Artist Nationality", ""] }] },
+          then: "Unknown",
+          else: "$oldestContributor.Artist Nationality"
+        }
+      },
+      youngestContributorNationality: {
+        $cond: {
+          if: { $or: [{ $eq: ["$youngestContributor.Artist Nationality", null] }, { $eq: ["$youngestContributor.Artist Nationality", ""] }] },
+          then: "Unknown",
+          else: "$youngestContributor.Artist Nationality"
+        }
+      }
+    }
+  },
+  {
+    $project: {
+      _id: 0,
+      Department: "$_id.Department",
+      oldestContributorDate: 1,
+      oldestContributorDisplayName: 1,
+      oldestContributorNationality: 1,
+      youngestContributorDate: 1,
+      youngestContributorDisplayName: 1,
+      youngestContributorNationality: 1
+    }
+  },
+  { 
+    $sort: {
+      "Department": 1
+    }      
+  }
+])

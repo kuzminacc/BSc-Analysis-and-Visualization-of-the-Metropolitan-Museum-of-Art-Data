@@ -1,0 +1,46 @@
+Za svaki departman pronaci broj umetnika zenskog pola koje imaju dela u tom departmanu i pronaci njihov procenat u odnosu na ostale umetnike. (0:1.793)
+
+
+
+
+db.objects.aggregate([
+  {
+    $unwind: "$Artist" 
+  },
+  {
+    $group: {
+      _id: "$Department",
+      totalArtists: { 
+          $addToSet: { 
+              displayName: "$Artist.Artist Display Name", 
+              beginDate: "$Artist.Artist Begin Date" 
+          } 
+      },
+      femaleArtists: {
+        $addToSet: {
+          $cond: [
+            { $eq: ["$Artist.Artist Gender", "Female"] },
+            { displayName: "$Artist.Artist Display Name", beginDate: "$Artist.Artist Begin Date" },
+            null
+          ]
+        }
+      }
+    }
+  },
+  {
+    $project: {
+      _id: 1,
+      totalArtists: { $size: "$totalArtists" },
+      totalFemaleArtists: { $size: "$femaleArtists" },
+      percentageFemaleArtists: {
+        $round: [{ $multiply: [
+          { $divide: [{ $size: "$femaleArtists" }, { $size: "$totalArtists" }] },
+          100
+        ]}, 2]
+      }
+    }
+  },
+  {
+    $sort: { percentageFemaleArtists: -1 }
+  }
+])

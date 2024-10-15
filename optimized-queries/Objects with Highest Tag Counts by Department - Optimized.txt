@@ -1,0 +1,69 @@
+db.objects.aggregate([
+  { $unwind: { path: "$Tags" } },
+  {
+    $group: {
+      _id: { Department: "$Department", ObjectID: "$_id" },
+      tags: { $push: "$Tags.tag" },
+      tagsCount: { $sum: 1 }
+    }
+  },
+  {
+    $sort: { "_id.Department": 1, "tagsCount": -1 }
+  },
+  {
+    $group: {
+      _id: "$_id.Department",
+      maxTagsObjectID: { $first: "$_id.ObjectID" },
+      maxTagsCount: { $first: "$tagsCount" },
+      tags: { $first: "$tags" }
+    }
+  },
+  {
+    $lookup: {
+      from: "objects",
+      localField: "maxTagsObjectID",
+      foreignField: "_id",
+      as: "objectDetails"
+    }
+  },
+  { $unwind: "$objectDetails" },
+  { $unwind: { path: "$objectDetails.Artist", preserveNullAndEmptyArrays: true }},
+  {
+  $project: {
+    _id: 0,
+    Department: "$objectDetails.Department",
+    ObjectName: "$objectDetails.Object Name",
+    maxTagsCount: 1,
+    tags: 1,
+    ArtistDisplayName: {
+      $cond: [
+        { $eq: ["$objectDetails.Artist.Artist Display Name", ""] },
+        "Unknown",
+        { $ifNull: ["$objectDetails.Artist.Artist Display Name", "Unknown"] }
+      ]
+    },
+    ArtistBeginDate: {
+      $cond: [
+        { $eq: ["$objectDetails.Artist.Artist Begin Date", ""] },
+        "Unknown",
+        { $ifNull: ["$objectDetails.Artist.Artist Begin Date", "Unknown"] }
+      ]
+    },
+    ArtistEndDate: {
+      $cond: [
+        { $eq: ["$objectDetails.Artist.Artist End Date", ""] },
+        "Unknown",
+        { $ifNull: ["$objectDetails.Artist.Artist End Date", "Unknown"] }
+      ]
+    },
+    ArtistNationality: {
+      $cond: [
+        { $eq: ["$objectDetails.Artist.Artist Nationality", ""] },
+        "Unknown",
+        { $ifNull: ["$objectDetails.Artist.Artist Nationality", "Unknown"] }
+      ]
+    }
+  }
+}
+
+])

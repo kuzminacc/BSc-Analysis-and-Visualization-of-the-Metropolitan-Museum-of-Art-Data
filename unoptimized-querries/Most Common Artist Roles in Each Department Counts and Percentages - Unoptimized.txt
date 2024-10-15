@@ -1,0 +1,76 @@
+db.objectsV1.aggregate([
+  { $unwind: "$Artist" },
+  {
+    $lookup: {
+      from: "artistsV1",
+      let: {
+        displayName: "$Artist.Artist Display Name", 
+        beginDate: "$Artist.Artist Begin Date"
+      },
+      pipeline: [
+        {
+          $match: {
+            $expr: {
+              $and: [
+                { $eq: ["$Artist Display Name", "$$displayName"] },
+                { $eq: ["$Artist Begin Date", "$$beginDate"] }
+              ]
+            }
+          }
+        }
+      ],
+      as: "artistInfo"
+    }
+  },
+  { $unwind: "$artistInfo" },
+  {
+    $group: {
+      _id: {
+        Department: "$Department",
+        ArtistRole: "$artistInfo.Artist Role"
+      },
+      count: { $sum: 1 }
+    }
+  },
+  {
+    $sort: { "_id.Department": 1, count: -1 }
+  },
+  {
+    $group: {
+      _id: "$_id.Department",
+      totalRoleCount: { $sum: "$count" },
+      topArtistRole: { $push: "$_id.ArtistRole" }, // Use $push to create an array of roles
+      topArtistRoleCount: { $first: "$count" }
+    }
+  },
+  {
+    $project: {
+      _id: 0,
+      Department: "$_id",
+      TotalRows: "$totalRoleCount",
+      TopArtistRole: {
+        $cond: {
+          if: { $eq: [{ $size: "$topArtistRole" }, 1] }, // Check if there's only one unique role
+          then: { $arrayElemAt: ["$topArtistRole", 0] }, // Extract the single role
+          else: { $first: "$topArtistRole" } // Use $first if there are multiple roles
+        }
+      },
+      TopArtistRoleCount: "$topArtistRoleCount",
+      PercentageTopArtistRole: {
+        $multiply: [
+          { $divide: ["$topArtistRoleCount", "$totalRoleCount"] },
+          100
+        ]
+      }
+    }
+  },
+  {
+    $project: {
+      Department: 1,
+      TotalRows: 1,
+      TopArtistRole: 1,
+      TopArtistRoleCount: 1,
+      PercentageTopArtistRole: { $round: ["$PercentageTopArtistRole", 2] }
+    }
+  }
+])

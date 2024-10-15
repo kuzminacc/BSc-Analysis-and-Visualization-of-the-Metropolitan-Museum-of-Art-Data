@@ -1,0 +1,105 @@
+// Details of Artists and Nearby Museums Within 100 km of Their Birth Locations
+
+[
+  {
+    $match: {
+      $and: [
+        { "BirthPlace": { $exists: true } },
+        { "DeathPlace": { $exists: true } },
+        {"Museums": { $ne: [], $exists: true }},
+      ]
+    }
+  },
+  {
+    $unwind: "$Museums"
+  },
+   {
+    $addFields: {
+      "MuseumLongitude": { $arrayElemAt: ["$Museums.geometry.coordinates", 0] }, 
+      "MuseumLatitude": { $arrayElemAt: ["$Museums.geometry.coordinates", 1] },
+      "BirthplaceLongitude": { $arrayElemAt: ["$BirthPlace.coordinates", 0] },
+      "BirthplaceLatitude": { $arrayElemAt: ["$BirthPlace.coordinates", 1] }
+    }
+  },
+ {
+  $addFields: {
+    "dLon": { $multiply: [{ $subtract: ["$MuseumLongitude", "$BirthplaceLongitude"] },{ $divide: [3.14159, 180.0] }] },
+    "dLat": { $multiply: [{ $subtract: ["$MuseumLatitude", "$BirthplaceLatitude"] },{ $divide: [3.14159, 180.0] }] },
+    "lat1_rad": { $multiply: ["$BirthplaceLatitude", { $divide: [3.14159, 180.0] }] },
+    "lat2_rad": { $multiply: ["$MuseumLatitude",{ $divide: [3.14159, 180.0] }] }
+  }
+},
+{
+  $addFields: {
+    "a": {
+      $add: [
+        { $pow: [{ $sin: { $divide: ["$dLat", 2] } }, 2] },
+        {
+          $multiply: [
+            { $pow: [{ $sin: { $divide: ["$dLon", 2] } }, 2] },
+            { $multiply: [{ $cos: "$lat1_rad" }, { $cos: "$lat2_rad" }] }
+          ]
+        }
+      ]
+    }
+  }
+},
+{
+  $addFields: {
+    "earthRadius": 6371,
+    "c": { $multiply: [2, { $asin: { $sqrt: "$a" } }] }
+  }
+},
+{
+  $addFields: {
+    "distance": { $multiply: ["$earthRadius", "$c"] }
+  }
+},
+  {
+    $match: {
+      distance: { $lt: 100 } 
+    }
+  },
+  {
+    $sort: {
+      distance: 1 
+    }
+  },
+  {
+    $group: {
+      _id: "$_id",
+      ArtistName: { $first: "$Artist Display Name" },
+      ArtistNationality: { $first: "$Artist Nationality" },
+      ArtistBeginDate: { $first: "$Artist Begin Date" },
+      ArtistEndDate: { $first: "$Artist End Date" },
+      MuseumNames: { $addToSet: "$Museums.properties.name" },
+      ClosestMuseumDistance: { $first: "$distance" },
+      ClosestMuseumName: { $first: "$Museums.properties.name" },
+      BirthPlace: { $first: "$BirthPlace.coordinates" },
+      MuseumCoordinates :  { $first: "$Museums.geometry.coordinates" },
+    }
+  },
+  { 
+    $project: { 
+      "ArtistName": 1, 
+      "ArtistBeginDate" : 1,
+      "ArtistEndDate" : 1,
+      "ArtistNationality" : 1,
+      "ClosestMuseumName": 1,
+      "lonBirth" :  { $arrayElemAt: ["$BirthPlace", 0] },
+      "latBirth" :  { $arrayElemAt: ["$BirthPlace", 1] },
+      "lon" : { $arrayElemAt: ["$MuseumCoordinates", 0] },
+      "lat" : { $arrayElemAt: ["$MuseumCoordinates", 1] },
+      "ClosestMuseumDistance": 1
+    } 
+  },
+  {
+    $sort: {
+      ClosestMuseumDistance: 1 
+    }
+  },
+  { 
+    $limit:  
+      500
+  }
+]

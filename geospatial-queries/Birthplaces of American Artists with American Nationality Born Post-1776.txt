@@ -1,0 +1,78 @@
+// Birthplaces of American Artists with American Nationality Born Post-1776
+
+[
+  {
+    $match: {
+      $and: [
+        {
+          "BirthPlace": {
+            $geoWithin: {
+              $geometry: {
+                type: "Polygon",
+                coordinates: [
+                  [
+                    [-124.82768126411483, 48.56914725986093],
+                    [-124.76581829394419, 40.52021505305484],
+                    [-120.93031414336616, 34.48995909970124],
+                    [-117.4659878138118, 32.530072518336006],
+                    [-97.17493359785045, 25.950360484214094],
+                    [-89.07088450550006, 29.185214441546556],
+                    [-80.53379462195537, 25.000961749647455],
+                    [-75.52289403813565, 35.75488910117109],
+                    [-67.04766712476156, 44.5741813465096],
+                    [-67.72815979663832, 47.2841907410173],
+                    [-69.33659702107427, 47.66053256706379],
+                    [-82.38968372707379, 43.59661476753225],
+                    [-82.38968372707379, 45.40543805817033],
+                    [-88.32852886345269, 48.487209581598435],
+                    [-95.25718152256144, 49.26027070299488],
+                    [-124.82768126411483, 48.56914725986093]
+                  ]
+                ]
+              }
+            }
+          }
+        },
+        {
+          "Artist Nationality": "American"
+        },
+        {
+          "Artist Begin Date": { $ne: "" } 
+        }
+      ]
+    }
+  },
+  {
+    $match: {
+      $expr: {
+        $gte: [
+          { $toInt: { $substr: ["$Artist Begin Date", 0, 4] } },
+          1776
+        ]
+      }
+    }
+  },
+  {
+    $project: {
+      "Longitude": { $arrayElemAt: ["$BirthPlace.coordinates", 0] }, 
+      "Latitude": { $arrayElemAt: ["$BirthPlace.coordinates", 1] }, 
+      "Constituent ID": 1,
+      "Artist Role": 1,
+      "Artist Prefix": 1,
+      "Artist Display Name": 1,
+      "Artist Display Bio": 1,
+      "Artist Suffix": 1,
+      "Artist Alpha Sort": 1,
+      "Artist Nationality": 1,
+      "Artist Begin Date": 1,
+      "Artist End Date": 1,
+      "Artist Gender": 1,
+      "Artist ULAN URL": 1,
+      "Artist Wikidata URL": 1,
+      "BirthPlace": 1,
+      "DeathPlace": 1,
+      "LivedPlaces": 1,
+      "Museums": 1
+    }
+  }
+]

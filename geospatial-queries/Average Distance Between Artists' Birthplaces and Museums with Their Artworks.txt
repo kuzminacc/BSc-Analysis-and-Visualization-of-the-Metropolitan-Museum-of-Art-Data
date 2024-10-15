@@ -1,0 +1,94 @@
+// Average Distance Between Artists' Birthplaces and Museums with Their Artworks
+
+[
+  {
+    $match: {
+      "Museums": { $ne: [], $exists: true },
+      "BirthPlace.coordinates": { $exists: true, $not: { $size: 0 } }
+    }
+  },
+  {
+    $project: {
+      "Artist Display Name": 1,
+      "Artist Nationality": 1,
+      "Artist Begin Date": 1,
+      "Artist End Date": 1,
+      "Artist Display Bio": 1,
+      birthplace: "$BirthPlace.coordinates",
+      museums: "$Museums.geometry.coordinates",
+      museumNames: "$Museums.properties.name"
+    }
+  },
+  {
+    $unwind: "$museums"
+  },
+ {
+    $addFields: {
+      "MuseumLongitude": { $arrayElemAt: ["$museums", 0] }, 
+      "MuseumLatitude": { $arrayElemAt: ["$museums", 1] },
+      "BirthplaceLongitude": { $arrayElemAt: ["$birthplace", 0] },
+      "BirthplaceLatitude": { $arrayElemAt: ["$birthplace", 1] }
+    }
+  },
+ {
+  $addFields: {
+    "dLon": { $multiply: [{ $subtract: ["$MuseumLongitude", "$BirthplaceLongitude"] },{ $divide: [3.14159, 180.0] }] },
+    "dLat": { $multiply: [{ $subtract: ["$MuseumLatitude", "$BirthplaceLatitude"] },{ $divide: [3.14159, 180.0] }] },
+    "lat1_rad": { $multiply: ["$BirthplaceLatitude", { $divide: [3.14159, 180.0] }] },
+    "lat2_rad": { $multiply: ["$MuseumLatitude",{ $divide: [3.14159, 180.0] }] }
+  }
+},
+{
+  $addFields: {
+    "a": {
+      $add: [
+        { $pow: [{ $sin: { $divide: ["$dLat", 2] } }, 2] },
+        {
+          $multiply: [
+            { $pow: [{ $sin: { $divide: ["$dLon", 2] } }, 2] },
+            { $multiply: [{ $cos: "$lat1_rad" }, { $cos: "$lat2_rad" }] }
+          ]
+        }
+      ]
+    }
+  }
+},
+{
+  $addFields: {
+    "earthRadius": 6371,
+    "c": { $multiply: [2, { $asin: { $sqrt: "$a" } }] }
+  }
+},
+{
+  $addFields: {
+    "distance": { $multiply: ["$earthRadius", "$c"] }
+  }
+},
+  {
+    $group: {
+      _id: "$_id",
+      "Artist Display Name": { $first: "$Artist Display Name" },
+      "Artist Nationality": { $first: "$Artist Nationality" },
+      "Artist Begin Date": { $first: "$Artist Begin Date" },
+      "Artist End Date": { $first: "$Artist End Date" },
+      "Artist Display Bio": { $first: "$Artist Display Bio" },
+      average_distance: { $avg: "$distance" },
+      "Birth Place": {$first: "$birthplace"},
+      "Museums" : {$push: "$museumNames"}
+    }
+  },
+  
+  {
+    $project: {
+      _id: 1,
+      "Artist Display Name": 1,
+      "Artist Nationality": 1,
+      "Artist Begin Date": 1,
+      "Artist End Date": 1,
+      "Artist Display Bio": 1,
+      average_distance: 1,
+      "Birth Place": 1,
+      "Museums": 1
+    }
+  }
+]

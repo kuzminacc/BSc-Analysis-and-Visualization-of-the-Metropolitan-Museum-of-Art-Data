@@ -1,0 +1,39 @@
+// Locations and Artists Born Within 100 km of the Metropolitan Museum of Art
+
+[
+  {
+    $geoNear: {
+      near: {
+        type: "Point",
+        coordinates: [-73.9633333, 40.7794444] 
+      },
+      distanceField: "distance",
+      maxDistance: 100000, 
+      spherical: true,
+      key: "BirthPlace", 
+      query: {
+        "BirthPlace": { $exists: true } 
+      }
+    }
+  },
+  {
+    $match: {
+      "Artist Begin Date": { $gte: "1872" } 
+    }
+  },
+  {
+    $project: {
+      "Artist Display Name": 1,
+      "Artist Nationality": 1,
+      "Artist Begin Date": 1,
+      "Artist End Date": 1,
+      "Artist Display Bio": 1,
+      "Artist Role" : 1,
+      "Museums": 1,
+      "BirthPlace Longitude": { $arrayElemAt: ["$BirthPlace.coordinates", 0] },
+      "BirthPlace Latitude": { $arrayElemAt: ["$BirthPlace.coordinates", 1] },
+      "distanceInKm": { $divide: ["$distance", 1000] }
+    }
+  }
+  
+]

@@ -1,0 +1,78 @@
+Za svaku zemlju objekta pronaci umetnika sa najvecim brojem dela stvorenih u toj zemlji i ispisati njegov datum rodjenja, ime, nacionalnost i broj dela. (0:2.716)
+
+
+
+db.objectsV1.aggregate([
+  { $match: { Country: { $exists: true, $ne: "" }, Artist: { $exists: true, $ne: [] } } },
+  { $unwind: "$Artist" },
+  {
+    $lookup: {
+      from: "artistsV1",
+      let: {
+        displayName: "$Artist.Artist Display Name", 
+        beginDate: "$Artist.Artist Begin Date" 
+      },
+      pipeline: [
+        {
+          $match: {
+            $expr: {
+              $and: [
+                { $eq: ["$Artist Display Name", "$$displayName"] },
+                { $eq: ["$Artist Begin Date", "$$beginDate"] }
+              ]
+            }
+          }
+        }
+      ],
+      as: "artistInfo"
+    }
+  },
+  { $unwind: "$artistInfo" },
+  {
+    $group: {
+      _id: {
+        Country: "$Country",
+        ArtistDisplayName: "$artistInfo.Artist Display Name",
+        ArtistBeginDate: { 
+            $cond: {
+                if: { $eq: ["$artistInfo.Artist Begin Date", ""] },
+                then: "Unknown",
+                else: "$artistInfo.Artist Begin Date"
+            }
+        },
+        ArtistNationality: {
+            $cond: {
+                if: { $eq: ["$artistInfo.Artist Nationality", ""] },
+                then: "Unknown",
+                else: "$artistInfo.Artist Nationality"
+            }
+        }
+
+      },
+      workCount: { $sum: 1 } 
+    }
+  },
+  {
+    $sort: { workCount: -1 } 
+  },
+  {
+    $group: {
+      _id: "$_id.Country", 
+      topArtist: { $first: "$$ROOT" } 
+    }
+  },
+  {
+    $project: {
+      _id: 0, 
+      Country: "$_id",
+      ArtistDisplayName: "$topArtist._id.ArtistDisplayName",
+      ArtistBeginDate: "$topArtist._id.ArtistBeginDate",
+      ArtistNationality: "$topArtist._id.ArtistNationality",
+      Works: "$topArtist.workCount"
+    }
+  },
+  {
+    $sort: { Works: -1 } 
+  },
+
+]);
